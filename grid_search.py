@@ -1,14 +1,21 @@
-# ----------
+# -----------
 # User Instructions:
-# 
-# Define a function, search() that returns a list
-# in the form of [optimal path length, row, col]. For
-# the grid shown below, your function should output
-# [11, 4, 5].
 #
-# If there is no valid path from the start point
-# to the goal, your function should return the string
-# 'fail'
+# Modify the the search function so that it returns
+# a shortest path as follows:
+# 
+# [['>', 'v', ' ', ' ', ' ', ' '],
+#  [' ', '>', '>', '>', '>', 'v'],
+#  [' ', ' ', ' ', ' ', ' ', 'v'],
+#  [' ', ' ', ' ', ' ', ' ', 'v'],
+#  [' ', ' ', ' ', ' ', ' ', '*']]
+#
+# Where '>', '<', '^', and 'v' refer to right, left, 
+# up, and down motions. Note that the 'v' should be 
+# lowercase. '*' should mark the goal cell.
+#
+# You may assume that all test cases for this function
+# will have a path from init to goal.
 # ----------
 
 # Grid format:
@@ -16,10 +23,10 @@
 #   1 = Occupied space
 
 grid = [[0, 0, 1, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0],
+        [0, 0, 1, 0, 0, 0],
         [0, 0, 1, 0, 1, 0],
         [0, 0, 1, 0, 1, 0],
-        [0, 0, 1, 0, 1, 0]]
+        [0, 0, 0, 0, 1, 0]]
 #grid = \
 #    [[0, 0, 1, 0, 0, 0],
 #     [0, 0, 1, 0, 0, 0],
@@ -40,8 +47,10 @@ frontier = np.zeros_like(grid)
 # expand tracks the searching order
 expand = np.zeros_like(grid)-1
 
-# path records the shortest path
+# path_fwd to record in searching phase
+# path records the shortest path when retrieving
 path= [[' ' for row in range(len(grid[0]))] for col in range(len(grid))]
+path_fwd= [[[0,0]  for row in range(len(grid[0]))] for col in range(len(grid))]
 
 init = [0, 0]
 goal = [len(grid)-1, len(grid[0])-1]
@@ -66,6 +75,7 @@ def search(grid,init,goal,cost):
     frontier_n_dist.append([dist,init[0],init[1]])
     # expand_cnt
     expand_cnt = 0
+    # path_fwd
     
     while(len(frontier_n_dist)!=0):
 
@@ -80,36 +90,20 @@ def search(grid,init,goal,cost):
         if (x==goal[0] and y==goal[1]):
             # Successfully found the path, retrieve it
             while(not (x==0 and y==0) ):
-                dist_min = expand[x][y]
-                # Search in neighborhood
-                for d in delta:
-                    new_x = x+d[0]
-                    new_y = y+d[1]
-                    # Record the min(expand) in neighbor
-                    if new_x>=0 and new_y>=0 \
-                    and new_x<len(grid) and new_y<len(grid[0])  \
-                    and expand[new_x][new_y]<dist_min \
-                    and expand[new_x][new_y]!=-1 :
-                        new_x < len(grid) 
-                        dist_min = expand[new_x][new_y]
-                        min_x = new_x
-                        min_y = new_y
-                        min_d = d 
-                # record path
-                for i in range(len(delta)):
-                    if delta[i] == min_d:
-                        chosen_delta_name = delta_name[(i+2)%4]
-                        path[x][y] = chosen_delta_name
+                print('cur x,y=', x, y)
+                action_d = path_fwd[x][y]
+                # We are going in reverse order, reverse the action too
+                real_action_d = delta[(delta.index(action_d)+2)%4]
+                x = x+real_action_d[0]
+                y = y+real_action_d[1]
+                # Assign the action
+                path[x][y] = delta_name[delta.index(action_d)]
 
-                x = min_x
-                y = min_y
-                # Path for starting point
-                path[min_x][min_y] = chosen_delta_name
-
-            # patch end points
+            # patch start/end points
             path[len(grid)-1][len(grid[0])-1] = '*'
 
             #print(expand)
+            print(path_fwd)
             return path
         else:
             # Add cur to visited list
@@ -128,6 +122,7 @@ def search(grid,init,goal,cost):
                     frontier[new_x][new_y]=1
                     frontier_n_dist.append([dist,new_x,new_y])
                     #print("\tAdding ", new_pos, "into frontier.")
+                    path_fwd[new_x][new_y]=d
         # update expand_cnt
         expand_cnt+=1
     
