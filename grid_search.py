@@ -14,19 +14,24 @@
 # up, and down motions. Note that the 'v' should be 
 # lowercase. '*' should mark the goal cell.
 #
-# You may assume that all test cases for this function
-# will have a path from init to goal.
+# This implements the A* algorithm.
+#
 # ----------
 
 # Grid format:
 #   0 = Navigable space
 #   1 = Occupied space
 
-grid = [[0, 0, 1, 0, 0, 0],
-        [0, 0, 1, 0, 0, 0],
-        [0, 0, 1, 0, 1, 0],
-        [0, 0, 1, 0, 1, 0],
+grid = [[0, 0, 0, 0, 0, 0],
+        [0, 1, 1, 1, 1, 0],
+        [0, 1, 0, 0, 0, 0],
+        [0, 1, 0, 0, 0, 0],
         [0, 0, 0, 0, 1, 0]]
+heuristic = [[9, 8, 7, 6, 5, 4],
+        [8, 7, 6, 5, 4, 3],
+        [7, 6, 5, 4, 3, 2],
+        [6, 5, 4, 3, 2, 1],
+        [5, 4, 3, 2, 1, 0]]
 #grid = \
 #    [[0, 0, 1, 0, 0, 0],
 #     [0, 0, 1, 0, 0, 0],
@@ -72,7 +77,7 @@ def search(grid,init,goal,cost):
     # dist
     dist = 0
     # Add starting point to frontier list
-    frontier_n_dist.append([dist,init[0],init[1]])
+    frontier_n_dist.append([dist+heuristic[init[0]][init[1]], dist,init[0],init[1]])
     # expand_cnt
     expand_cnt = 0
     # path_fwd
@@ -83,14 +88,14 @@ def search(grid,init,goal,cost):
         frontier_n_dist = sorted(frontier_n_dist, key=lambda x:x[0])
 
         # Pop from position 0 - BFS expects FIFO. 
-        cur_dist, x, y = frontier_n_dist.pop(0)
+        _, cur_dist, x, y = frontier_n_dist.pop(0)
 
         expand[x][y]=expand_cnt
 
         if (x==goal[0] and y==goal[1]):
             # Successfully found the path, retrieve it
             while(not (x==0 and y==0) ):
-                print('cur x,y=', x, y)
+                #print('cur x,y=', x, y)
                 action_d = path_fwd[x][y]
                 # We are going in reverse order, reverse the action too
                 real_action_d = delta[(delta.index(action_d)+2)%4]
@@ -102,8 +107,8 @@ def search(grid,init,goal,cost):
             # patch start/end points
             path[len(grid)-1][len(grid[0])-1] = '*'
 
-            #print(expand)
-            print(path_fwd)
+            print(expand)
+            #print(path_fwd)
             return path
         else:
             # Add cur to visited list
@@ -120,7 +125,7 @@ def search(grid,init,goal,cost):
                     and visited[new_x][new_y]!=1  \
                     and grid[new_x][new_y]!=1 :
                     frontier[new_x][new_y]=1
-                    frontier_n_dist.append([dist,new_x,new_y])
+                    frontier_n_dist.append([dist+heuristic[new_x][new_y],dist,new_x,new_y])
                     #print("\tAdding ", new_pos, "into frontier.")
                     path_fwd[new_x][new_y]=d
         # update expand_cnt
@@ -128,7 +133,7 @@ def search(grid,init,goal,cost):
     
         print("frontier_n_dist= ", frontier_n_dist)
     
-    #print(expand)
+    print(expand)
     print('failed')
     return path
 
