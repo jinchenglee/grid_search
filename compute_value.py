@@ -100,8 +100,57 @@ def compute_value(grid, goal, cost):
 
     return tmp
 
+delta = [[-1, 0 ], # go up
+         [ 0, -1], # go left
+         [ 1, 0 ], # go down
+         [ 0, 1 ]] # go right
+delta_name = ['^', '<', 'v', '>']
+#-------------------
+# Draw the policy along path
+#-------------------
+def draw_path(value, goal):
+    policy = [[' ' for col in range(len(grid[0]))] for row in range(len(grid))]
+    width = len(value[0])
+    height = len(value)
+
+    for i in range(height):
+        for j in range(width):
+            # Reset min_xx
+            min_neighbor_value = 99
+            min_direction = 5 
+            # Browsing neighbors
+            for direction in delta:
+                x = i+direction[0]
+                y = j+direction[1]
+                # if (x,y) within borders
+                if x>-1 and x<height and y>-1 and y<width:
+                    if value[x][y]<min_neighbor_value:
+                        #print("i,j,x,y=", i, j, x, y, "value[x][y] = ", value[x][y])
+                        min_neighbor_value = value[x][y]
+                        for p in range(len(delta)):
+                            if direction==delta[p]:
+                                min_direction = p
+            # Goal
+            if i==goal[0] and j==goal[1]:
+                policy[goal[0]][goal[1]] = '*'
+            # Post processing
+            elif min_direction==5:
+                print("Error!!! Invalid default min_direction 5.")
+            elif value[i][j]!=99:
+                policy[i][j] = delta_name[min_direction]
+                #print("policy[",i,"][",j,"]=",policy[i][j])
+
+    return policy
 
 value = compute_value(grid, goal, cost)
 
+print("Distance value to goal at:", goal)
 for i in range(len(value)):
     print(value[i])
+
+policy = draw_path(value, goal)
+print("Policy map to goal at:", goal)
+for i in range(len(policy)):
+    print(policy[i])
+
+
