@@ -27,8 +27,8 @@ action_name = ['R', '#', 'L']
 # grid format:
 #     0 = navigable space
 #     1 = unnavigable space 
-grid = [[0, 0, 0],
-        [0, 0, 1]]
+grid = [[0, 0],
+        [0, 0]]
 
 init = [1, 2, 0] # given in the form [row,col,direction]
                  # direction = 0: up
@@ -36,7 +36,7 @@ init = [1, 2, 0] # given in the form [row,col,direction]
                  #             2: down
                  #             3: right
                 
-goal = [0, 2] # given in the form [row,col]
+goal = [0, 0] # given in the form [row,col]
 
 cost = [2, 1, 20] # cost has 3 values, corresponding to making 
                   # a right turn, no turn, and a left turn
@@ -60,11 +60,9 @@ act_dim = len(action)
 ego_dir_dim = len(ego_dir)
 
 # Dictionary 
-#   next_act_dist[src_x,src_y, dst_x,dst_y, ego_face_dir] - returns 
-#        (nxt_x,nxt_y,nxt_ego_face_dir,action_to_get_there,distance2destination)
-# FIXME: should be 
-#   next_act_dist[src_x,src_y,src_ego_face_dir, dst_x,dst_y, dst_ego_face_dir] 
-next_act_dist = {}
+#   dist[src_x,src_y,src_ego_face_dir, dst_x,dst_y, dst_ego_face_dir] = [action, distance2destination]
+#   (the "action" is a bit confusing. It is only meaningful to direct neighbours.)
+dist = {}
 
 # Build the init dictionary based on graph structure
 def init(height, width, ego_dir):
@@ -79,76 +77,155 @@ def init(height, width, ego_dir):
 
                     if grid[src_i][src_j]==0 and grid[dst_i][dst_j]==0: 
                         hit = False
-                        for idx,val in enumerate(ego_dir):
+
+                        for idx,val in enumerate(ego_dir): # Direct neighbors
                             if (src_i+val[0],src_j+val[1])==(dst_i,dst_j):
                                 hit = True
                                 if idx==0: # UP
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'up'] = [dst_i, dst_j, 'up', '#', 1]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = [dst_i, dst_j, 'up', 'R', 2]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'right'] = [dst_i, dst_j, 'up', 'L', 20]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'up'] = ['#', 1]
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'up'] = ['R', 2]
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'up'] = ['L', 20]
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'left'] = ['L', 20]
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'left'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'down'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'right'] = ['R', 2]
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'right'] = ['NULL', 'INF']
                                 elif idx==1: # LEFT
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'up'] = [dst_i, dst_j, 'left', 'L', 20]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = [dst_i, dst_j, 'left', '#', 1]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'right'] = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = [dst_i, dst_j, 'left', 'R', 2]
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'left'] = ['L', 20]
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'left'] = ['#', 1]
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'left'] = ['R', 2]
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'left'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'up'] = ['R', 2]
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'up'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'down'] = ['L', 20]
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'down'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'right'] = ['NULL', 'INF']
                                 elif idx==2: # DOWN 
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'up'] = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = [dst_i, dst_j, 'down', 'L', 20]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'right'] = [dst_i, dst_j, 'down', 'R', 2]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = [dst_i, dst_j, 'down', '#', 1]
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'down'] = ['L', 20]
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'down'] = ['#', 1]
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'down'] = ['R', 2]
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'up'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'left'] = ['R', 2]
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'left'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'right'] = ['L', 20]
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'right'] = ['NULL', 'INF']
                                 elif idx==3: # RIGHT
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'up'] = [dst_i, dst_j, 'right', 'R', 2]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'right'] = [dst_i, dst_j, 'right', '#', 1]
-                                    next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = [dst_i, dst_j, 'right', 'L', 20]
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'right'] = ['R', 2]
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'right'] = ['L', 20]
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'right'] = ['#', 1]
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'up'] = ['L', 20]
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'left'] = ['NULL', 'INF']
+
+                                    dist[src_i,src_j, 'up'   , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'left' , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'down' , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                                    dist[src_i,src_j, 'right', dst_i,dst_j, 'down'] = ['R', 2]
+
                         if (src_i,src_j)==(dst_i,dst_j): # Self to self
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'up']   = [dst_i,dst_j, 'up', 'NULL', 0]
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = [dst_i,dst_j, 'left', 'NULL', 0]
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = [dst_i,dst_j, 'down', 'NULL', 0]
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'right']= [dst_i,dst_j, 'right', 'NULL', 0]
+                            dist[src_i,src_j, 'up'   , dst_i,dst_j, 'up'] = ['NULL', 0]
+                            dist[src_i,src_j, 'left' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'down' , dst_i,dst_j, 'up'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'right', dst_i,dst_j, 'up'] = ['NULL', 'INF']
+
+                            dist[src_i,src_j, 'up'   , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'left' , dst_i,dst_j, 'left'] = ['NULL', 0]
+                            dist[src_i,src_j, 'down' , dst_i,dst_j, 'left'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'right', dst_i,dst_j, 'left'] = ['NULL', 'INF']
+
+                            dist[src_i,src_j, 'up'   , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'left' , dst_i,dst_j, 'down'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'down' , dst_i,dst_j, 'down'] = ['NULL', 0]
+                            dist[src_i,src_j, 'right', dst_i,dst_j, 'down'] = ['NULL', 'INF']
+
+                            dist[src_i,src_j, 'up'   , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'left' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'down' , dst_i,dst_j, 'right'] = ['NULL', 'INF']
+                            dist[src_i,src_j, 'right', dst_i,dst_j, 'right'] = ['NULL', 0]
 
                         elif hit==False: #Not immediate neighbors
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'up']   = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
-                            next_act_dist[src_i,src_j, dst_i,dst_j, 'right']= ['NULL', 'NULL', 'NULL', 'NULL', 'INF']
+                            for src_dir in ego_dir_name:
+                                for dst_dir in ego_dir_name:
+                                    dist[src_i,src_j,src_dir, dst_i,dst_j,dst_dir ]   = ['NULL', 'INF']
 
                     else: # Unaccessible cell
-                        next_act_dist[src_i,src_j, dst_i,dst_j, 'up'] =   ['UNAV', 'UNAV', 'UNAV', 'UNAV', 'INF']
-                        next_act_dist[src_i,src_j, dst_i,dst_j, 'left'] = ['UNAV', 'UNAV', 'UNAV', 'UNAV', 'INF']
-                        next_act_dist[src_i,src_j, dst_i,dst_j, 'down'] = ['UNAV', 'UNAV', 'UNAV', 'UNAV', 'INF']
-                        next_act_dist[src_i,src_j, dst_i,dst_j, 'right'] = ['UNAV', 'UNAV','UNAV', 'UNAV', 'INF'] 
+                        for src_dir in ego_dir_name:
+                            for dst_dir in ego_dir_name:
+                                dist[src_i,src_j,src_dir, dst_i,dst_j,dst_dir ]   = ['UNAV', 'INF']
+
 #------------------------
 # Floyd-Warshal algorithm
 #------------------------
 def FW(goal):
     dim = width*height
 
-    next_act_dist_new = next_act_dist.copy()
+    dist_new = dist.copy()
 
     # Intermediate point
     for k in range(dim):
+        for ego_dir_k in ego_dir_name: 
 
-        # source
-        for i in range(dim):
-            for ego_dir_i in ego_dir_name: 
-
-                # destination
-                for j in range(dim):
-                    print("k=",int(k/width),k%width,"i=",int(i/width),i%width,"j=",int(j/width),j%width,"ego_dir=",ego_dir_i)
-                    dist_ij = next_act_dist[int(i/width),i%width,int(j/width),j%width,ego_dir_i]
-                    print("\tdist_ij=",dist_ij)
-                    dist_ik = next_act_dist[int(i/width),i%width,int(k/width),k%width,ego_dir_i]
-                    print("\tdist_ik=",dist_ik)
-                    if dist_ik[2]!='NULL' and dist_ik[2]!='UNAV':
-                        dist_kj = next_act_dist[int(k/width),k%width,int(j/width),j%width,dist_ik[2]]
-                        print("\tdist_kj=",dist_kj)
-                        if dist_ik[4]!='INF' and dist_kj[4]!='INF':
-                            detour_ikj = dist_ik[4]+dist_kj[4]
-                            if dist_ij[4]=='INF' or dist_ij[4]>detour_ikj:
-                                print("\tUpdating ","i=",int(i/width),i%width,"j=",int(j/width),j%width,"ego_dir=",ego_dir_i, "dist_ij=",detour_ikj)
-                                next_act_dist[int(i/width),i%width,int(j/width),j%width,ego_dir_i][4] = detour_ikj
+            # source
+            for i in range(dim):
+                for ego_dir_i in ego_dir_name: 
+    
+                    # destination
+                    for j in range(dim):
+                        for ego_dir_j in ego_dir_name: 
+                            print("k=",int(k/width),k%width,ego_dir_k,"i=",int(i/width),i%width,ego_dir_i,"j=",int(j/width),j%width,ego_dir_j)
+                            dist_ij = dist[int(i/width),i%width,ego_dir_i,int(j/width),j%width,ego_dir_j]
+                            print("\tdist_ij=",dist_ij)
+                            dist_ik = dist[int(i/width),i%width,ego_dir_i,int(k/width),k%width,ego_dir_k]
+                            print("\tdist_ik=",dist_ik)
+                            #if dist_ik[0]!='NULL' and dist_ik[0]!='UNAV':
+                            if dist_ik[0]!='UNAV':
+                                dist_kj = dist[int(k/width),k%width,ego_dir_k,int(j/width),j%width,ego_dir_j]
+                                print("\tdist_kj=",dist_kj)
+                                if dist_ik[1]!='INF' and dist_kj[1]!='INF':
+                                    detour_ikj = dist_ik[1]+dist_kj[1]
+                                    if dist_ij[1]=='INF' or dist_ij[1]>detour_ikj:
+                                        print("\tUpdating ","i=",int(i/width),i%width,"j=",int(j/width),j%width,"ego_dir=",ego_dir_i, "dist_ij=",detour_ikj)
+                                        dist[int(i/width),i%width,ego_dir_i,int(j/width),j%width,ego_dir_j][1] = detour_ikj
 
 #    # Debug print
 #    dist_from_src((0,0), W, width, height)
@@ -159,14 +236,15 @@ def FW(goal):
     for i in range(height):
         for j in range(width):
             for e in range(ego_dir_dim):
-                if e==0:
-                    tmp[e][i][j] = next_act_dist[i,j,goal[0],goal[1],'up'][4]
-                elif e==1:
-                    tmp[e][i][j] = next_act_dist[i,j,goal[0],goal[1],'left'][4]
-                elif e==2:
-                    tmp[e][i][j] = next_act_dist[i,j,goal[0],goal[1],'down'][4]
-                elif e==3:
-                    tmp[e][i][j] = next_act_dist[i,j,goal[0],goal[1],'right'][4]
+                dst_dist_min = dist[i,j,ego_dir_name[e],goal[0],goal[1],'up'][1]
+                for dst_e in range(ego_dir_dim):
+                    tmp_dist = dist[i,j,ego_dir_name[e],goal[0],goal[1],ego_dir_name[dst_e]][1] 
+                    if dst_dist_min=='INF':
+                        dst_idst_min = tmp_dist
+                    elif tmp_dist!='INF':
+                        if tmp_dist < dst_dist_min:
+                            dst_idst_min = tmp_dist
+                tmp[e][i][j] = dst_dist_min
 
     return tmp
 
@@ -175,17 +253,19 @@ def optimum_policy2D(grid,init,goal,cost):
     return policy2D
     
 init(height,width,ego_dir)
+
 print("init graph build done:")
 # Source position, ego_dir
 for src_i in range(height):
     for src_j in range(width):
+        for ego_dir_i in ego_dir_name:
 
-        # Destination position
-        for dst_i in range(height):
-            for dst_j in range(width):
+            # Destination position
+            for dst_i in range(height):
+                for dst_j in range(width):
+                    for ego_dir_j in ego_dir_name:
 
-                for ego_dir_i in ego_dir_name:
-                    print(src_i,src_j,dst_i,dst_j,ego_dir_i,"\t:",next_act_dist[src_i,src_j,dst_i,dst_j,ego_dir_i])
+                        print(src_i,src_j,ego_dir_i,dst_i,dst_j,ego_dir_j,"\t:",dist[src_i,src_j,ego_dir_i,dst_i,dst_j,ego_dir_j])
 
 tmp=FW(goal)
 for e in range(ego_dir_dim):
@@ -193,6 +273,20 @@ for e in range(ego_dir_dim):
     for i in range(height):
         for j in range(width):
             print(i,j,"\t:", tmp[e][i][j])
+
+print("Updated graph build done:")
+# Source position, ego_dir
+for src_i in range(height):
+    for src_j in range(width):
+        for ego_dir_i in ego_dir_name:
+
+            # Destination position
+            for dst_i in range(height):
+                for dst_j in range(width):
+                    for ego_dir_j in ego_dir_name:
+
+                        print(src_i,src_j,ego_dir_i,dst_i,dst_j,ego_dir_j,"\t:",dist[src_i,src_j,ego_dir_i,dst_i,dst_j,ego_dir_j])
+
 
 
 ## #------------------------
